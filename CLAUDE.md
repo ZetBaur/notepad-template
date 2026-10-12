@@ -30,6 +30,7 @@
 | Закончился звонок / интервью, нужен разбор | `after-call` |
 | Поправили базу или промпт; «проверь бота» | `eval` |
 | Нужен живой голосовой тест приложения | `say-test` |
+| Хочет потренироваться, «мок-собес» | команда `/mock` |
 | Пересобрать и установить приложение | `rebuild` |
 | Совет, видео, скрин, чужое резюме для LinkedIn/резюме; замер LinkedIn Analytics | `profile-update` |
 | Спорное решение влияет на оффер, фактов мало | `cross-check-llms` |
@@ -48,7 +49,7 @@
 app/               — Tauri-приложение (src/ фронтенд, src-tauri/ Rust, agent-sidecar/ мост к Claude Agent SDK, eval/ тест промпта)
 docs/              — bot/ (KNOWLEDGE, критерии ответа, список вопросов), linkedin/, resume/, COMMANDS.md
 profiles/          — личные данные (не в git)
-.claude/commands/  — /start, /setup-profile
+.claude/commands/  — /start, /setup-profile, /mock
 .claude/skills/    — навыки по ситуации
 ```
 

@@ -1,0 +1,99 @@
+[package]
+name = "notepad"
+version = "0.1.0"
+description = "Personal local interview copilot — private fork, not for distribution"
+authors = ["Notepad"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "notepad_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-shell = "2"
+# Prevents a second process from spawning when the user launches the app
+# again while it's already running — instead the existing window is shown
+# and focused, same as any normal desktop app. Must be the first plugin
+# registered (see lib.rs) so it can intercept before anything else starts.
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Reading the screenshot the OS's own capture tool leaves on the clipboard
+# (see screenshot.rs) — we never capture the screen ourselves.
+tauri-plugin-clipboard-manager = "2"
+png = "0.17"
+base64 = "0.22"
+# Direct HTTPS to the LLM provider the user chose. There is no official
+# Anthropic/OpenAI Rust SDK, and BYOK means requests go straight from the
+# user's machine to the provider — no SyntaxCue server in the path.
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+futures-util = "0.3"
+# Already in the dependency tree transitively via tauri's own async runtime;
+# added directly just for the one `sleep` call gating generate_answer's
+# single silent retry (docs/PRODUCT-BRIEF.md scenario 5). `sync` added for
+# `oneshot` — screenshot.rs's main-thread AppKit dispatch needs to await the
+# result of a `run_on_main_thread` closure (see hide_panel_for_capture_async
+# in lib.rs).
+tokio = { version = "1", default-features = false, features = ["time", "sync"] }
+# Local speech-to-text. Linked in-process rather than shelling out to a
+# whisper.cpp binary: one less sidecar to ship and sign, and the model stays
+# loaded between segments instead of being re-read on every utterance.
+# `metal` gives GPU acceleration on Apple silicon (brief §4) and is
+# Apple-only, hence the target split. `vulkan` does the same job on Windows —
+# whisper always pads to a fixed 30s encoder window regardless of utterance
+# length, so on CPU-only Windows builds that pass was a ~25s fixed cost no
+# matter how short the segment (measured 2026-07-27, docs/WINDOWS-BUILD.md);
+# ggml's Vulkan backend picks up whatever GPU (integrated or discrete) the
+# machine has via its existing driver at runtime — no extra install for the
+# end user, the Vulkan SDK below is only a build-time dependency on the
+# machine producing the release. ggml falls back to CPU on its own if no
+# Vulkan-capable device is found, so this is safe on GPU-less machines too.
+# A plain non-accelerated build remains the fallback for any other target
+# (e.g. Linux) until that platform is worth its own acceleration path.
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.16", features = ["metal"] }
+# Already present transitively via tauri/wry's own macOS integration (see
+# Cargo.lock) — added directly here only to send one Objective-C message
+# (NSWindow displayIfNeeded) that Tauri's cross-platform Window API has no
+# equivalent for. See the repaint-on-inactive-window investigation in
+# docs/TODO.md for why this is needed.
+objc2 = "0.6"
+
+[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
+whisper-rs = { version = "0.16" }
+
+# WASAPI loopback capture — the Windows counterpart to the macOS CoreAudio
+# process tap. Unlike macOS (where the capture API is Swift-only and therefore
+# has to live in a sidecar binary), WASAPI is reachable from Rust in-process,
+# so there is no second executable to build, bundle or sign here. This is a
+# safe wrapper over the same COM interfaces we would otherwise drive by hand
+# through the `windows` crate.
+[target.'cfg(target_os = "windows")'.dependencies]
+whisper-rs = { version = "0.16", features = ["vulkan"] }
+wasapi = "0.23"
+# "Quick screenshot" button (screenshot.rs) captures the primary monitor
+# directly via GDI BitBlt on Windows, rather than simulating a PrtScn
+# keypress — Windows 11 (from build 22621.1928 on) defaults
+# `PrintScreenKeyForSnippingEnabled` to on, which makes a simulated PrtScn
+# open the Snip & Sketch region-selection overlay instead of silently
+# copying the whole screen, so relying on the OS shortcut is no longer
+# reliable. GDI screen capture needs no permission on Windows (unlike
+# macOS's Screen Recording TCC gate), so this doesn't compromise the
+# module's "OS does the capturing" privacy design — see the module doc
+# comment at the top of screenshot.rs.
+windows-sys = { version = "0.59", features = [
+  "Win32_Graphics_Gdi",
+  "Win32_UI_WindowsAndMessaging",
+] }
+

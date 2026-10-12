@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Merged into the generated bundle Info.plist by `tauri build` (Tauri v2 picks
+  up an Info.plist sitting next to tauri.conf.json).
+
+  NSAudioCaptureUsageDescription is not optional decoration: without it macOS
+  refuses the system-audio permission request outright, before the user is
+  ever shown a prompt. tccd logs it verbatim as
+  "Refusing authorization request for service kTCCServiceAudioCapture ...
+  without NSAudioCaptureUsageDescription key", and the app just sees a tap
+  that produces silence — which is exactly how this shipped in v0.1.0-v0.1.2
+  and cost a long debugging session (see docs/TODO.md). The bug hid itself
+  during development because launching the binary from a terminal makes the
+  terminal the responsible process for TCC, and terminals already hold that
+  grant.
+
+  Wording follows the CLAUDE.md "GEO / safety rule": described relative to the
+  user's own machine and audio, never relative to anyone else's awareness.
+-->
+<plist version="1.0">
+  <dict>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Notepad transcribes interview audio on this computer to suggest answers locally. Audio is processed in memory and never leaves this machine.</string>
+  </dict>
+</plist>

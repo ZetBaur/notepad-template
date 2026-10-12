@@ -1,0 +1,911 @@
+:root {
+  font-family: -apple-system, "Segoe UI", Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 400;
+
+  color: #171717;
+  /* Real window transparency (`transparent: true` in tauri.conf.json) was
+     tried 2026-09-15/16 and reverted the same window — see #compact-view's
+     own comment for why. Each view now paints its own opaque background
+     again (#e6e6e9 for setup/permission below, dark for #compact-view), so
+     this could be any solid color without being visibly wrong, but matches
+     the setup/permission screens' tone rather than leaving it undefined. */
+  background-color: #e6e6e9;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Any author-stylesheet `display` rule (`.field { display: flex }`,
+   `.view { display: flex }`, etc.) beats the UA stylesheet's
+   `[hidden] { display: none }` — author styles win over UA styles in the
+   cascade regardless of specificity. This bit us twice already (once for
+   #setup-view/#compact-view/#permission-view, again for the region-
+   screenshot hotkey field) because each fix was scoped to one selector
+   instead of the attribute itself. One global rule closes the whole class of
+   bug: nothing that sets `hidden` via JS (setMode() in main.ts, the
+   region-hotkey-field toggle, anything added later) can be silently
+   overridden by an unrelated `display` rule again. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Transient feedback for Cmd/Ctrl +/-/0 zoom — see the flashZoomIndicator
+   comment in main.ts. Fixed relative to the viewport (not `rem`-sized) so
+   its own size stays legible/consistent regardless of the zoom level it's
+   reporting. */
+#zoom-indicator {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(23, 23, 23, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+}
+
+#zoom-indicator.visible {
+  opacity: 1;
+}
+
+.view {
+  padding: 20px;
+}
+
+/* ---------- setup view ---------- */
+
+#setup-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  height: 100vh;
+  /* Opaque: the window itself is transparent (see :root), but this is the
+     normal configuration screen, not the floating hint panel. */
+  background-color: #e6e6e9;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+/* Set from @tauri-apps/api's getVersion() at startup (main.ts) — lets the
+   user tell at a glance which version they're running, e.g. next to the
+   "a new version is available" banner above. */
+.app-version {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #999;
+  vertical-align: middle;
+}
+
+.app-header .icon-button {
+  color: #999;
+  margin-top: 2px;
+}
+
+.app-header .icon-button:hover {
+  color: #666;
+}
+
+.tagline {
+  margin: 2px 0 0;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.field-group {
+  border: 1px solid #d8d8dc;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.field-group summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+}
+
+.field-group[open] summary {
+  margin-bottom: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > span {
+  font-size: 0.82rem;
+  color: #333;
+}
+
+/* Marks a field required to enable "Start listening" — see
+   refreshStartButtonState() in main.ts for which fields actually gate it. */
+.required-mark {
+  color: #c0392b;
+  font-size: 2em;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.permission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.permission-row:last-of-type {
+  margin-bottom: 0;
+}
+
+/* .secondary-button defaults to width:100% (stacked full-width buttons
+   elsewhere, e.g. the License section) — here it sits inline next to a
+   status label instead, so it needs to shrink to its own content. */
+.permission-row .secondary-button {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.permission-status {
+  font-size: 0.85rem;
+}
+
+.permission-status.granted {
+  color: #2f9e44;
+}
+
+.permission-status.denied {
+  color: #c0392b;
+}
+
+.field-note {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #888;
+}
+
+/* ul.field-note (e.g. "For IT/coding interview") keeps the same size/color as
+   the plain-<p> version, just with a tighter list indent than the browser
+   default so bullets don't look mis-aligned from the rest of the panel. */
+ul.field-note {
+  padding-left: 1.1em;
+}
+
+ul.field-note li + li {
+  margin-top: 2px;
+}
+
+input,
+select,
+textarea,
+button {
+  border-radius: 7px;
+  border: 1px solid #d5d5d5;
+  padding: 0.5em 0.7em;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #171717;
+  background-color: #ffffff;
+}
+
+textarea {
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover {
+  border-color: #396cd8;
+}
+
+/* ---------- custom dropdown ----------
+   Replaces native <select> and <datalist>: both render their option list as
+   OS-controlled popup chrome that CSS cannot reach at all — no hover state,
+   no way to fix the "only shows options matching what's already typed" or
+   duplicate-text quirks datalist has. This is a plain absolutely-positioned
+   div we fully own instead. The trigger sits over a real (hidden) <select>
+   or <input> that still holds the actual value, so every other part of the
+   app keeps reading/writing/listening to that element exactly as before. */
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 400;
+  background-color: #ffffff;
+}
+
+.dropdown-trigger::after {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid #888;
+  border-bottom: 1.5px solid #888;
+  transform: rotate(45deg);
+  margin-top: -3px;
+}
+
+.dropdown input {
+  width: 100%;
+  padding-right: 28px;
+}
+
+/* Visual-only affordance for the typeable comboboxes (Model, Interview
+   language) so they read as "pick from a list" like the real <select>-backed
+   dropdowns, even though typing/searching still works exactly as before —
+   see enhanceModelDropdown / setupLanguageCombobox. pointer-events: none so
+   clicks pass through to the input underneath. */
+.dropdown-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid #888;
+  border-bottom: 1.5px solid #888;
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #d5d5d5;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  padding: 4px;
+}
+
+.dropdown-option {
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.dropdown-option:hover,
+.dropdown-option.active {
+  background: #396cd8;
+  color: #ffffff;
+}
+
+.dropdown-option-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.dropdown-option:hover .dropdown-option-hint,
+.dropdown-option.active .dropdown-option-hint {
+  color: #dbe4f7;
+}
+
+.dropdown-option-empty {
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.checkbox-field {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.checkbox-field input {
+  margin-top: 3px;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.checkbox-field span {
+  font-size: 0.82rem;
+  color: #333;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: #888;
+  background: transparent;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.info-icon:hover {
+  color: #396cd8;
+  border-color: transparent;
+}
+
+.api-key-help {
+  margin-top: 10px;
+}
+
+.api-key-help summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #396cd8;
+}
+
+.help-steps {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 0.82rem;
+  color: #444;
+}
+
+.primary-button {
+  background: #171717;
+  color: #ffffff;
+  border: none;
+  padding: 0.7em;
+  font-size: 0.95rem;
+  border-radius: 8px;
+}
+
+.primary-button:hover {
+  background: #333;
+  border-color: transparent;
+}
+
+.primary-button:disabled {
+  background: #c8c8c8;
+  color: #8a8a8a;
+  cursor: not-allowed;
+}
+
+#permission-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100vh;
+  overflow-y: auto;
+  /* Same reasoning as #setup-view above — opaque, not the floating panel. */
+  background-color: #e6e6e9;
+}
+
+#permission-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #444;
+  white-space: pre-line;
+}
+
+/* ---------- compact view ---------- */
+
+/* Opaque again as of 2026-09-16 (owner decision) — real window transparency
+   (`transparent: true`, tried 2026-09-15/16) is reverted pending a proper
+   analysis of docs/PRODUCT-BRIEF.md's "Прозрачность окна (opacity) —
+   рассмотрено и отклонено" (2026-07-22, unanimous 4-LLM reject: contrast on
+   an unpredictable background, and reputational association with cheat-tool
+   marketing — see that section's 2026-09-16 addendum for the competitor
+   research that reopened the question without yet resolving it). Kept the
+   same dark color from the transparent attempt (owner: "цвет фона оставим
+   как сейчас") — just solid now, no alpha/blur/GPU-layer-isolation
+   machinery, since none of that means anything without something behind the
+   window to actually show through. If transparency comes back after that
+   analysis, `rgb(30, 30, 32)` here is the same base tone the blurred version
+   used — see docs/TODO-DONE.md for the full history if reviving it. */
+#compact-view {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* Thin margins from every edge of the window (docs/PROPOSAL-TOOLBAR-
+     HOTKEYS-SETTINGS.md, 2026-09-15) — was asymmetric (10/14/14). */
+  padding: 12px;
+  /* Final "Graphite dark overlay" spec settled 2026-09-16 (owner + other-LLM
+     round-trip that caught its own earlier inconsistencies — see docs/
+     TODO.md for the back-and-forth). text-primary. */
+  color: #e7eaee;
+  /* 13px UI base (2026-09-16, owner) — macOS HIG default Body size, not the
+     14px used for :root elsewhere (setup/permission screens, untouched).
+     Descendant rem values below are relative to THIS, not :root, so they
+     were re-tuned alongside this change — see each selector's own note. */
+  font-size: 13px;
+  /* overlay-bg / content-bg from the final spec — explicitly 100% opacity,
+     no blur, no glassmorphism (the spec's own words: real transparency
+     stays a separate, deferred decision — see the note above this rule's
+     history for the PRODUCT-BRIEF.md context). */
+  /* Darcula (JetBrains) palette 2026-10-08, owner. OLD "Graphite" palette for rollback: panel #17191c, code block #2e343b, toolbar #1c1f23, buttons #30353b / hover #424953, dividers #30353b. */
+  background: #3c3f41;
+}
+
+.compact-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Dragging is handled in main.ts (mousedown/mousemove on this element),
+     not by CSS — see index.html's comment on #compact-header for why it's
+     no longer plain data-tauri-drag-region on macOS. `cursor: default`
+     keeps it from looking like selectable text. */
+  cursor: default;
+  user-select: none;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #515151;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* audio-active from the final spec — semantic "audio is actually coming
+     in right now" green, not a generic accent. Was #2ecc71, then #4ade80
+     mid-session; settled to #42ce83 once the owner had the other LLM
+     resolve its own earlier inconsistent numbers (docs/TODO.md). Scoped
+     ONLY to this + .audio-meter-fill — NOT reused for headings/code/links
+     per the final spec ("зелёный не нужно использовать для заголовков"). */
+  background: #42ce83;
+  flex-shrink: 0;
+}
+
+#status-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.icon-button {
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  padding: 2px 6px;
+}
+
+.audio-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.audio-meter {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.audio-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: #42ce83;
+  transition: width 0.08s linear;
+}
+
+.segment-count {
+  font-size: 0.85rem;
+  color: #aab2bc;
+  white-space: nowrap;
+}
+
+.hint-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px 10px 0;
+  font-size: 0.85rem;
+}
+
+.hint-feed-empty {
+  margin-top: 30px;
+}
+
+.hint-feed-empty p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #aab2bc;
+}
+
+.hint-feed-empty p + p {
+  margin-top: 1em;
+}
+
+/* No border/background of its own (had both — removed 2026-09-16, owner
+   feedback against the Cluely reference, same "own frame" complaint as the
+   code block above): each Q&A entry now just sits directly on the panel,
+   spacing (not a box) is what separates one from the next. */
+.feed-item {
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.feed-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.feed-item-label {
+  font-size: 0.85rem;
+  color: #aab2bc;
+}
+
+.feed-item-remove {
+  border: none;
+  background: transparent;
+  color: #aab2bc;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.feed-item-remove:hover {
+  color: #ec6b73;
+  border-color: transparent;
+}
+
+.feed-item-text {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.field-note.field-note-error {
+  color: #c0392b;
+  white-space: pre-line;
+}
+
+.download-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e5e5;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.download-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #396cd8;
+  transition: width 0.2s linear;
+}
+
+.feed-item-heard {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #aab2bc;
+  margin: 0;
+}
+
+.feed-item-answer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #515151;
+  font-size: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Stall filler: a stock phrase shown above the answer when the first word is
+   late (see scheduleFiller in main.ts). Stays on screen after the answer
+   arrives; visually distinct so it is not mistaken for the answer. */
+.feed-item-filler {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: #9aa0a6;
+}
+
+.feed-item-answer-error {
+  color: #ec6b73;
+}
+
+/* A failure that arrives after partial content has already streamed — the
+   partial answer above this must stay on screen untouched (see the
+   llm-error listener in main.ts), so this renders as a small separate line
+   rather than replacing anything. */
+.feed-item-answer-error-note {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed #515151;
+  font-size: 0.85rem;
+  color: #ec6b73;
+}
+
+/* docs/PROPOSAL-ANSWER-FORMAT-MY-THOUGHTS.md — short spoken-approach block
+   before the code, additive to the in-code comments (not a replacement). */
+.my-thoughts {
+  margin: 4px 0 8px;
+}
+
+.my-thoughts-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7e8792;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.my-thoughts ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.my-thoughts li {
+  margin: 2px 0;
+}
+
+/* Added 2026-09-16 (owner) — mirrors .my-thoughts styling so the trailing
+   "Time: .../Space: ..." lines llm.rs asks for read as a labeled block
+   instead of plain prose (see renderComplexity in main.ts). */
+.complexity {
+  margin: 8px 0 0;
+}
+
+.complexity-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7e8792;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.complexity-row {
+  display: flex;
+  gap: 6px;
+}
+
+.complexity-key {
+  color: #aab2bc;
+  min-width: 3.5em;
+}
+
+/* Added 2026-09-16 (owner) — leading headline for non-coding answers (see
+   renderAnswerHeadline in main.ts), same role Reasoning plays for coding
+   answers: a short direct answer to scan first, explanation follows.
+   Deliberately text-primary, NOT the audio-active accent — the final spec
+   explicitly scopes that green to "Listening"/waveform only ("зелёный не
+   нужно использовать для заголовков"), so this went back to neutral. */
+.answer-headline {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  color: #e7eaee;
+}
+
+/* code-bg from the final "Graphite dark overlay" spec 2026-09-16 — was
+   #252526 (VS Code Dark+'s own editor color, matched to the owner's
+   earlier explicit "take the confirmed palette directly" instruction).
+   #22262b is close but distinct, part of the final internally-consistent
+   spec settled after the other LLM caught its own drifting numbers between
+   messages (docs/TODO.md has the full back-and-forth). */
+.code-block {
+  margin: 8px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  white-space: pre;
+  /* Lightened twice 2026-09-16 (owner, live tests): #22262b (final spec) ->
+     #282d33 -> #2e343b, still not distinct enough from the #17191c panel
+     behind it each round — own picks, not from the final spec. */
+  background: #2b2b2b;
+  border-radius: 6px;
+}
+
+.code-block code {
+  /* JetBrains Mono first 2026-09-16 (owner, accepted from the same spec) —
+     distinguishes 0/O and 1/l/I better than the previous stack, which
+     matters for code read under time pressure. NOT bundled as a web font
+     (no @font-face infra in this project, no font file shipped) — this
+     only takes effect for users who already have it installed; everyone
+     else falls through to the same SF Mono/Menlo/Consolas stack as before,
+     so this is a free, risk-free addition rather than a guaranteed change
+     for every user. Bundling the actual font file is a separate,
+     not-yet-decided follow-up if the owner wants it to apply universally. */
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Explicit px, not rem off #compact-view's 13px UI base — code is the
+     primary readable content, not secondary/caption text, and owner
+     confirmed 14px directly (2026-09-16), independent of the UI base. */
+  font-size: 14px;
+  /* 1.5 × 14px = 21px, matches the final spec's --code-line-height exactly. */
+  line-height: 1.5;
+  color: #e2e6eb;
+  white-space: pre;
+}
+
+.tok-keyword {
+  color: #c586c0;
+}
+
+.tok-string {
+  color: #ce9178;
+}
+
+/* Switched to the final "Graphite dark overlay" spec's comment color
+   2026-09-16 (owner) — #8fa58f, replacing VS Code Dark+'s own #608b4e
+   (itself a replacement for an earlier deliberately-brightened #7fb56a —
+   see docs/TODO.md for the full back-and-forth on this one color). Lighter
+   than Dark+'s own value on purpose — the spec's rationale: legible but
+   still visually secondary to the code itself, tuned for this app's
+   read-under-time-pressure context rather than a calm editor. */
+.tok-comment {
+  color: #8fa58f;
+}
+
+.tok-number {
+  color: #b5cea8;
+}
+
+.inline-code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+/* docs/PROPOSAL-TOOLBAR-HOTKEYS-SETTINGS.md (2026-09-15) — Show/Hide,
+   Screenshot, Start Over, settings, one row, Cluely-inspired.
+   toolbar-bg added 2026-09-16 from the final spec — distinct from the
+   panel background (#17191c), same idea as the code block having its own
+   surface. Position/hierarchy of the buttons within this row (which is
+   primary, icon-only treatment, etc.) is a SEPARATE still-open question
+   (docs/TODO.md) — this only applies the spec's colors to the existing
+   layout, not a restructure. */
+.compact-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  /* Its own filled surface (not a border-bottom line like before) is what
+     separates it from the panel now — a border here would just be a
+     redundant line inside its own rounded card. */
+  background: #323232;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: none;
+  border-radius: 6px;
+  /* border-subtle used as a neutral raised surface, not the panel/toolbar
+     bg itself, so buttons still read as pressable against the toolbar. */
+  background: #4c5052;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #e7eaee;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toolbar-button:hover {
+  background: #5c6164;
+}
+
+/* A distinct blue "primary action" style for Screenshot your code (per the
+   final spec's semantic table) was tried and reverted 2026-09-16 after a
+   live look — owner wanted all three toolbar buttons visually identical,
+   no single one singled out. Back to plain .toolbar-button for this one
+   too; --action-primary (#4C8DFF) is currently unused in the palette. */
+
+/* Solid, high-contrast badge 2026-09-16 (owner: barely visible against the
+   toolbar button, low-opacity white on dark barely registered — Cluely's
+   own hotkey badge is a solid light pill with dark text, clearly separated
+   from the button around it). */
+.toolbar-hotkey {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 4px;
+  background: #e7eaee;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #17191c;
+}
+
+/* Gear stays the plain .icon-button look, just pushed to the row's end. */
+.compact-toolbar .icon-button {
+  margin-left: auto;
+  /* Explicit, not just inherited from #compact-view's `color` — found live
+     2026-09-16 the gear was barely visible (owner screenshot). Bumped size
+     too: the "⚙" glyph renders visibly smaller than surrounding text at the
+     same font-size, so 1rem (matching every other .icon-button) read as a
+     faint speck next to the toolbar buttons' 0.76rem bold labels. */
+  color: #e7eaee;
+  font-size: 1.3rem;
+}
+
+.secondary-button {
+  width: 100%;
+  background: #f0f0f0;
+}
+
+/* No `@media (prefers-color-scheme: dark)` block, deliberately (decided
+   2026-07-23). One existed and was removed: the app renders the same light UI
+   on every OS regardless of the system setting.
+
+   Why it was dropped rather than fixed: the palette read as harsh — body text
+   sat at 14.6:1 (near-white on near-black), which is well past the comfortable
+   band for long reading and produces halation, while muted greys sat at 4.7:1,
+   right on the AA floor. Both were fixable, but a second palette is a second
+   thing every future UI change has to be checked against, for a utility the
+   user looks at in short bursts.
+
+   Known tradeoff, accepted: on a fully dark desktop the window is a bright
+   rectangle during a call. If that turns out to matter more than the
+   maintenance cost, the replacement is an explicit System/Light/Dark setting
+   stored alongside the others in settings.rs — not a bare re-added media
+   query, which is what put this here the first time.
+
+   The code block in the hint panel stays dark in both cases (see `pre`/`code`
+   above); that's syntax highlighting, not theming. */

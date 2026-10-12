@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notepad</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body data-mode="setup">
+    <!-- Setup screen: shown before "Start listening". -->
+    <main id="setup-view" class="view">
+      <header class="app-header">
+        <div>
+          <h1>Notepad <span id="app-version" class="app-version"></span></h1>
+          <p class="tagline">Interview copilot</p>
+        </div>
+        <button
+          id="collapse-all-button"
+          class="icon-button"
+          type="button"
+          title="Collapse all sections"
+          aria-label="Collapse all sections"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.3" />
+            <line x1="3.5" y1="9.5" x2="10.5" y2="9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+          </svg>
+        </button>
+      </header>
+
+      <details class="field-group">
+        <summary>Answer model</summary>
+        <label class="field">
+          <span>Model</span>
+          <div class="dropdown">
+            <select id="model-select" hidden>
+              <option value="claude-haiku-4-5">Haiku 4.5 — fastest (default)</option>
+              <option value="claude-sonnet-5">Sonnet 5 — balanced</option>
+              <option value="claude-opus-5">Opus 5 — smartest, slowest</option>
+            </select>
+          </div>
+          <p class="field-note">
+            Answers come through your local Claude Code login — no API key
+            needed. The model can be switched at any time, even mid-interview.
+          </p>
+        </label>
+      </details>
+
+      <details class="field-group">
+        <summary>Interview</summary>
+        <label class="field">
+          <span>Interview language</span>
+          <div class="dropdown">
+            <input
+              id="stt-language-input"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Type to search…"
+            />
+          </div>
+          <p class="field-note">
+            What language your interviewer speaks — used for speech recognition and for the
+            language of your hints, including code comments.
+          </p>
+        </label>
+
+        <label class="field">
+          <span>Answer style</span>
+          <div class="dropdown">
+            <select id="style-select" hidden>
+              <option value="short">Short — 1-2 sentences</option>
+              <option value="bullets">Balanced — adapts to the question</option>
+              <option value="detailed">Detailed — with an example</option>
+            </select>
+          </div>
+        </label>
+      </details>
+
+      <details class="field-group advanced-settings">
+        <summary>Advanced settings</summary>
+
+        <!-- Show/hide, screenshot and start-over hotkeys are fixed (⌘B/⌘H/⌘R),
+             registered in Rust at startup — no setting here. -->
+
+        <label class="field checkbox-field">
+          <input id="capture-exclusion-checkbox" type="checkbox" />
+          <span>
+            <strong>Keep hint window out of screen share</strong>
+            <br />
+            When on, your hint window won't appear if you share or record
+            your screen. When off, it behaves like a normal window.
+          </span>
+        </label>
+
+        <label class="field">
+          <span>Speech recognition model</span>
+          <div class="dropdown">
+            <select id="stt-model-select" hidden>
+              <option value="tiny">Tiny — fastest, least accurate — 75 MB download</option>
+              <option value="base">Base — fast — 142 MB download</option>
+              <option value="small" selected>Small — included, recommended</option>
+              <option value="medium">Medium — most accurate, slowest — 1.5 GB download</option>
+            </select>
+          </div>
+          <p class="field-note">
+            Not sure? Leave this on Small — it's already installed and works
+            well. Runs entirely on this computer; audio is never uploaded.
+          </p>
+        </label>
+        <p id="stt-model-status" class="field-note"></p>
+        <button id="stt-download-button" class="secondary-button" type="button" hidden>
+          Download this model
+        </button>
+        <div id="stt-download-bar" class="download-bar" hidden>
+          <div id="stt-download-fill" class="download-bar-fill"></div>
+        </div>
+      </details>
+
+      <!-- macOS permissions, granted up front from the setup screen instead of
+           mid-call. Hidden on Windows by main.ts (no OS permission needed there);
+           `hidden` is also the safe default before that JS runs. -->
+      <details class="field-group" id="permissions-block" hidden>
+        <summary>Permissions</summary>
+
+        <!-- Shown in place of the per-permission detail once both are granted. -->
+        <p class="permission-row" id="permissions-ready-row" hidden>
+          <span id="permissions-ready-status" class="permission-status granted">Ready to listen</span>
+        </p>
+
+        <div id="permissions-detail">
+          <div class="permission-row">
+            <span id="audio-permission-status" class="permission-status">System audio access</span>
+            <button id="check-audio-permission-button" class="secondary-button" type="button">
+              Check / enable
+            </button>
+          </div>
+          <p class="field-note">
+            Needed to hear the interview at all. macOS may show a one-time
+            system prompt the first time you click this — better to see it now
+            than during a call.
+          </p>
+
+          <!-- Unhidden on macOS by main.ts. The asterisk lives outside
+               #screen-permission-status because main.ts overwrites that span's
+               textContent on every check. -->
+          <div class="permission-row" id="screen-permission-row" hidden>
+            <span
+              ><span id="screen-permission-status" class="permission-status">Screen recording access</span
+              ><span class="required-mark" aria-hidden="true">*</span></span
+            >
+            <button
+              id="request-screen-permission-button"
+              class="secondary-button"
+              type="button"
+              hidden
+            >
+              Allow
+            </button>
+          </div>
+          <p class="field-note" id="screen-permission-note" hidden>
+            Required to start listening. The "Screenshot your code" button in
+            the hint panel toolbar is always available, and macOS requires this
+            permission before the app can run its own screenshot tool at all.
+            Better to grant it now than to meet the system prompt during a
+            call. You may need to restart Notepad after allowing it.
+          </p>
+
+          <details class="api-key-help" id="screen-permission-manual-help" hidden>
+            <summary>System Settings didn't open the right section?</summary>
+            <!-- Steps filled in by main.ts (is_macos_tahoe_or_later): macOS 26
+                 merged "Screen Recording" and "System Audio Recording" into one
+                 category; older macOS keeps them separate. -->
+            <ol class="help-steps" id="screen-permission-manual-steps"></ol>
+            <p class="field-note" id="screen-permission-manual-warning" hidden>
+              Make sure you toggle "Screen &amp; System Audio Recording" —
+              not the similarly-named "System Audio Recording Only" nearby.
+              That's a different, unrelated permission this app doesn't use.
+            </p>
+          </details>
+        </div>
+      </details>
+
+      <details class="field-group">
+        <summary>Behavioral interview: knowledge base (Optional)</summary>
+        <label class="field">
+          <span>Profile</span>
+          <div class="dropdown">
+            <select id="profile-select" hidden></select>
+          </div>
+          <ul class="field-note">
+            <li>Knowledge profiles live in profiles/&lt;name&gt;/bot/knowledge.md.</li>
+            <li>Switching restarts the answer session (~2 s), so pick it before the interview.</li>
+          </ul>
+        </label>
+        <label class="field">
+          <span>Company card</span>
+          <div class="dropdown">
+            <select id="company-select" hidden>
+              <option value="">None</option>
+            </select>
+          </div>
+          <ul class="field-note">
+            <li>Cards live in profiles/companies/ (company info + job description).</li>
+            <li>Used for "why us?" and other company questions.</li>
+          </ul>
+        </label>
+        <button id="reload-knowledge-button" class="secondary-button" type="button">
+          Reload knowledge
+        </button>
+        <p id="reload-knowledge-note" class="field-note" hidden></p>
+      </details>
+
+      <details class="field-group">
+        <summary>For IT/coding interview (Optional)</summary>
+        <label class="field">
+          <span>Code language</span>
+          <div class="dropdown">
+            <select id="interview-context" hidden>
+              <option value="">Not specified</option>
+              <option value="Python">Python</option>
+              <option value="JavaScript">JavaScript</option>
+              <option value="Java">Java</option>
+              <option value="Go">Go</option>
+              <option value="C++">C++</option>
+              <option value="Kotlin">Kotlin</option>
+            </select>
+          </div>
+          <ul class="field-note">
+            <li>Code answers will use the language you specify.</li>
+            <li>If left on "Not specified", the answer will match the problem's language.</li>
+            <li>If no language is specified in the problem, the answer will be in Python.</li>
+            <li>Not interviewing for a programming role? Leave this section unchanged.</li>
+          </ul>
+        </label>
+      </details>
+
+      <button id="start-listening-button" class="primary-button" type="button" disabled>
+        Start listening
+      </button>
+      <!-- Visible reason why the button is disabled; refreshStartButtonState()
+           owns it. -->
+      <p id="start-listening-reason-note" class="field-note" hidden></p>
+    </main>
+
+    <!-- Compact hint panel: shown after "Start listening". -->
+    <main id="compact-view" class="view" hidden>
+      <!-- NOT data-tauri-drag-region on macOS: it triggers a live WindowServer
+           move that drops the window's cross-Space visibility. Dragging is
+           implemented by hand in main.ts (attachDragRegion). -->
+      <!-- Hotkey badges are filled in by main.ts from FIXED_HOTKEYS. -->
+      <div class="compact-toolbar" id="compact-toolbar">
+        <button id="show-hide-button" class="toolbar-button" type="button">
+          <span>Show/Hide</span>
+          <kbd id="show-hide-hotkey-badge" class="toolbar-hotkey"></kbd>
+        </button>
+        <button id="quick-screenshot-button" class="toolbar-button" type="button">
+          <span>Screenshot your code</span>
+          <kbd id="screenshot-hotkey-badge" class="toolbar-hotkey"></kbd>
+        </button>
+        <button id="start-over-button" class="toolbar-button" type="button">
+          <span>Start Over</span>
+          <kbd id="start-over-hotkey-badge" class="toolbar-hotkey"></kbd>
+        </button>
+        <button id="settings-button" class="icon-button" type="button" title="Back to settings">
+          ⚙
+        </button>
+      </div>
+
+      <header class="compact-header" id="compact-header">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Listening</span>
+      </header>
+
+      <div class="audio-meter-row">
+        <div class="audio-meter"><div id="audio-meter-fill" class="audio-meter-fill"></div></div>
+        <span id="segment-count-text" class="segment-count">0 speech segments</span>
+      </div>
+
+      <!-- Empty-state tip; removed as soon as the first item lands in the feed
+           and restored by Start Over. -->
+      <div id="hint-feed" class="hint-feed">
+        <div class="hint-feed-empty">
+          <p><strong>See a coding problem on screen?</strong></p>
+          <p>
+            Click "Screenshot your code"<span id="tip-hotkey-clause"></span> —
+            it drops into the window automatically.
+          </p>
+          <p>
+            Or paste a screenshot from your own system tool instead (⌘V / Ctrl+V).
+          </p>
+          <p>
+            Problem too long for one screenshot? Copy the text (⌘A / Ctrl+A) and
+            paste that instead — pasted text works the same way.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Shown instead of the compact panel when system-audio capture can't start. -->
+    <main id="permission-view" class="view" hidden>
+      <header class="app-header">
+        <h1 id="permission-title">Enable system audio access</h1>
+      </header>
+      <section class="field-group">
+        <p id="permission-message"></p>
+      </section>
+      <button id="open-system-settings-button" class="primary-button" type="button">
+        Open System Settings
+      </button>
+      <button id="permission-retry-button" class="secondary-button" type="button">
+        Try again
+      </button>
+      <button id="permission-back-button" class="secondary-button" type="button">
+        Back to settings
+      </button>
+    </main>
+  </body>
+</html>

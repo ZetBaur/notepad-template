@@ -1,0 +1,7 @@
+# `cargo run` (what `tauri dev` uses under the hood) invokes this instead of
+# running the built binary directly, so it can be codesigned first — see
+# scripts/codesign-and-run.sh and README "Local dev code signing" for why.
+# Only affects `cargo run`/`test`, not `cargo build`/`check` — and only on
+# macOS, where the Keychain-prompt problem this works around exists.
+[target.'cfg(target_os = "macos")']
+runner = "scripts/codesign-and-run.sh"

@@ -1,0 +1,12 @@
+.DS_Store
+*.local
+
+# Personal data (resume, salary expectations, STAR stories, interview
+# history) — never meant to be committed, even to this private repo.
+/profiles
+/data/
+*.profile.json
+
+node_modules
+dist
+dist-ssr

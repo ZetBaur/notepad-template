@@ -1,0 +1,146 @@
+[
+ {
+  "kind": "border",
+  "q": "Do you have experience with Vue?"
+ },
+ {
+  "kind": "border",
+  "q": "Have you worked with MongoDB or AWS?"
+ },
+ {
+  "kind": "tech",
+  "q": "What is the difference between let and const in JavaScript?"
+ },
+ {
+  "kind": "tech",
+  "q": "Explain how closures work in JavaScript."
+ },
+ {
+  "kind": "tech",
+  "q": "How does the event loop work in Node.js?"
+ },
+ {
+  "kind": "tech",
+  "q": "What is the difference between useMemo and useCallback in React?"
+ },
+ {
+  "kind": "tech",
+  "q": "How would you design a rate limiter for an API?"
+ },
+ {
+  "kind": "tech",
+  "q": "What is the difference between REST and GraphQL?"
+ },
+ {
+  "kind": "tech",
+  "q": "How do you find and fix a slow PostgreSQL query?"
+ },
+ {
+  "kind": "tech",
+  "q": "What is the difference between Promise.all and Promise.allSettled?"
+ },
+ {
+  "kind": "border",
+  "q": "Tell me about a hard technical problem you solved."
+ },
+ {
+  "kind": "border",
+  "q": "Tell me about a time you improved the performance of an application."
+ },
+ {
+  "kind": "border",
+  "q": "How do you approach code review?"
+ },
+ {
+  "kind": "border",
+  "q": "How do you handle disagreements about architecture in your team?"
+ },
+ {
+  "kind": "border",
+  "q": "What is your experience with React Native?"
+ },
+ {
+  "kind": "border",
+  "q": "Tell me about a time you had to learn a new technology quickly."
+ },
+ {
+  "kind": "border",
+  "q": "How would you describe your experience with Node.js?"
+ },
+ {
+  "kind": "border",
+  "q": "Tell me about a project you are technically proud of."
+ },
+ {
+  "kind": "border",
+  "q": "How do you decide between REST and GraphQL on a project?"
+ },
+ {
+  "kind": "behav",
+  "q": "Tell me about a conflict you had with a coworker.",
+  "must_not": [
+   "^no data"
+  ]
+ },
+ {
+  "kind": "behav",
+  "q": "What are your salary expectations?",
+  "must_not": [
+   "^no data"
+  ]
+ },
+ {
+  "kind": "company",
+  "q": "Why do you want to work at our company?",
+  "must_not": [
+   "compensation",
+   "current company for over"
+  ]
+ },
+ {
+  "kind": "company",
+  "q": "Why do you want to work here?",
+  "must_not": [
+   "compensation",
+   "current company for over"
+  ]
+ },
+ {
+  "kind": "company",
+  "q": "Why are you interested in this role?",
+  "must_not": [
+   "compensation",
+   "current company for over"
+  ]
+ },
+ {
+  "kind": "company",
+  "q": "What do you know about us?",
+  "must_not": [
+   "compensation",
+   "current company for over"
+  ]
+ },
+ {
+  "kind": "company",
+  "q": "Why should we hire you?",
+  "must_not": [
+   "compensation",
+   "current company for over"
+  ]
+ },
+ {
+  "kind": "behav",
+  "q": "Do you take freelance work alongside your full-time job?",
+  "must_not": [
+   "^no data"
+  ]
+ },
+ {
+  "kind": "behav",
+  "q": "How much of your current work is mobile compared to web or backend?",
+  "must_not": [
+   "^no data"
+  ]
+ }
+]

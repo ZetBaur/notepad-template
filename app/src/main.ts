@@ -65,26 +65,22 @@ const DEFAULT_MODEL = "claude-haiku-4-5";
 // with defaults on save.
 type PersistedSettings = {
   model: string;
-  style: string;
   interviewContext: string;
   company: string;
   profile: string;
   sttLanguage: string;
   captureExclusion: boolean;
-  sttModel: string;
   zoomLevel: number;
   audioPermissionGranted: boolean | null;
 };
 
 const EMPTY_SETTINGS: PersistedSettings = {
   model: "",
-  style: "",
   interviewContext: "",
   company: "",
   profile: "",
   sttLanguage: "",
   captureExclusion: true,
-  sttModel: "",
   zoomLevel: 1,
   audioPermissionGranted: null,
 };
@@ -624,15 +620,8 @@ function showPermissionScreen(kind: "permission_denied" | "unsupported_os" | "er
 
 window.addEventListener("DOMContentLoaded", async () => {
   const modelSelect = document.querySelector<HTMLSelectElement>("#model-select")!;
-  const sttModelSelect = document.querySelector<HTMLSelectElement>("#stt-model-select")!;
-  const sttModelStatus = document.querySelector<HTMLElement>("#stt-model-status")!;
-  const sttDownloadBar = document.querySelector<HTMLElement>("#stt-download-bar")!;
-  const sttDownloadFill = document.querySelector<HTMLElement>("#stt-download-fill")!;
-  const sttDownloadButton = document.querySelector<HTMLButtonElement>("#stt-download-button")!;
-  const styleSelect = document.querySelector<HTMLSelectElement>("#style-select")!;
   const interviewContext = document.querySelector<HTMLSelectElement>("#interview-context")!;
   const companySelect = document.querySelector<HTMLSelectElement>("#company-select")!;
-  const profileSelect = document.querySelector<HTMLSelectElement>("#profile-select")!;
   const reloadKnowledgeButton = document.querySelector<HTMLButtonElement>("#reload-knowledge-button")!;
   const reloadKnowledgeNote = document.querySelector<HTMLElement>("#reload-knowledge-note")!;
   const sttLanguageInput = document.querySelector<HTMLInputElement>("#stt-language-input")!;
@@ -706,7 +695,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   // of the hardcoded defaults below run, so a returning user never has to
   // redo their setup.
   const saved = await loadPersistedSettings();
-  if (saved.style) styleSelect.value = saved.style;
   interviewContext.value = saved.interviewContext;
 
   // Falls back to 1 (100%) for both a genuinely first-ever run and an
@@ -772,7 +760,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   captureExclusionCheckbox.checked = saved.captureExclusion;
-  if (saved.sttModel) sttModelSelect.value = saved.sttModel;
   // Declared before the first check below: the async check can resolve before
   // later code runs, and assigning to a `let` still in its temporal dead zone throws.
   let screenPermissionGranted = !isMac;
@@ -795,13 +782,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   function collectSettings(): PersistedSettings {
     return {
       model: modelSelect.value,
-      style: styleSelect.value,
       interviewContext: interviewContext.value,
       company: companySelect.value,
-      profile: profileSelect.value,
+      profile: saved.profile,
       sttLanguage: codeForLanguageName(sttLanguageCombobox.getValue()) || "en",
       captureExclusion: captureExclusionCheckbox.checked,
-      sttModel: sttModelSelect.value,
       zoomLevel: currentZoom,
       audioPermissionGranted,
     };
@@ -815,7 +800,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  for (const field of [modelSelect, styleSelect, interviewContext, companySelect, profileSelect, captureExclusionCheckbox, sttModelSelect]) {
+  for (const field of [modelSelect, interviewContext, companySelect, captureExclusionCheckbox]) {
     field.addEventListener("change", () => void persistSettings());
   }
   // The language combobox persists via its own onChange (passed to
@@ -862,7 +847,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     startListeningButton.disabled = !sttModelReady || !screenPermissionGranted;
     const reason = !sttModelReady
-      ? "Download the selected speech model first"
+      ? "Speech model not found — run `pnpm model` in app/ (downloads ggml-small.bin)"
       : !screenPermissionGranted
         ? "Grant screen recording access above to start listening"
         : "";
@@ -876,8 +861,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   const knownModels = Array.from(modelSelect.options).map((o) => o.value);
   modelSelect.value = knownModels.includes(saved.model) ? saved.model : DEFAULT_MODEL;
   enhanceSelectDropdown(modelSelect);
-  enhanceSelectDropdown(styleSelect);
-  enhanceSelectDropdown(sttModelSelect);
   enhanceSelectDropdown(interviewContext);
 
   // Company cards are files in profiles/companies/; the list is read from
@@ -897,29 +880,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   await fillCompanies();
   enhanceSelectDropdown(companySelect);
 
-  // Knowledge profiles are folders in profiles/ holding bot/knowledge.md; no "None" option, the
-  // empty value means "first profile on disk" (see knowledge::read_profile).
-  async function fillProfiles() {
-    let names: string[] = [];
-    try {
-      names = await invoke<string[]>("list_profiles");
-    } catch (err) {
-      console.error("failed to list profiles", err);
-    }
-    const keep = profileSelect.value || saved.profile;
-    profileSelect.replaceChildren();
-    for (const n of names) profileSelect.appendChild(new Option(n, n));
-    profileSelect.value = names.includes(keep) ? keep : (names[0] ?? "");
-  }
-  await fillProfiles();
-  enhanceSelectDropdown(profileSelect);
+  // The knowledge profile has no setting: the value saved in settings.json is passed through
+  // unchanged (empty = first profile on disk, see knowledge::read_profile).
 
   reloadKnowledgeButton.addEventListener("click", () => {
     void (async () => {
       try {
         const warning = await invoke<string>("reload_knowledge");
         await fillCompanies();
-        await fillProfiles();
         companySelect.dispatchEvent(new Event("change"));
         reloadKnowledgeNote.classList.toggle("field-note-error", !!warning);
         reloadKnowledgeNote.textContent = warning ? `Reloaded, but found a problem:\n${warning}` : "Knowledge reloaded.";
@@ -1131,72 +1099,21 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   let segmentCount = 0;
 
-  // Whether the currently selected speech model can be used right now.
-  // "Start listening" is gated on this, but downloading happens here on the
-  // setup screen — never at "Start listening", which is the moment the user
-  // is sitting down to an interview and cannot wait on a large download.
+  // The speech model is fixed (the one bundled with the app, no setting). "Start
+  // listening" stays disabled until it is found on disk.
+  const STT_MODEL = "small";
   let sttModelReady = false;
 
   async function refreshModelStatus() {
-    const model = sttModelSelect.value;
     try {
-      const [ready, bundled] = await Promise.all([
-        invoke<boolean>("is_model_downloaded", { model }),
-        invoke<boolean>("is_model_bundled", { model }),
-      ]);
-      sttModelReady = ready;
-      sttModelStatus.textContent = bundled
-        ? "Included with the app — nothing to download."
-        : ready
-          ? "Ready — downloaded on this computer."
-          : "Not downloaded yet. Download it now so it's ready before your interview.";
-      sttDownloadButton.toggleAttribute("hidden", ready);
+      sttModelReady = await invoke<boolean>("is_model_downloaded", { model: STT_MODEL });
     } catch (err) {
       console.error("failed to check model", err);
-      sttModelStatus.textContent = "";
       sttModelReady = false;
     }
     refreshStartButtonState();
   }
-
-  sttModelSelect.addEventListener("change", () => {
-    void refreshModelStatus();
-  });
   void refreshModelStatus();
-
-  async function downloadSelectedModel() {
-    const model = sttModelSelect.value;
-    sttDownloadButton.disabled = true;
-    sttDownloadBar.toggleAttribute("hidden", false);
-    sttDownloadFill.style.width = "0%";
-    sttModelStatus.textContent = "Downloading speech model…";
-
-    try {
-      await invoke("download_model", { model });
-    } catch (err) {
-      sttModelStatus.textContent = `Model download failed: ${err}`;
-    } finally {
-      sttDownloadButton.disabled = false;
-      sttDownloadBar.toggleAttribute("hidden", true);
-      await refreshModelStatus();
-    }
-  }
-
-  sttDownloadButton.addEventListener("click", () => {
-    void downloadSelectedModel();
-  });
-
-  void listen<{ downloaded: number; total: number }>(
-    "model-download-progress",
-    (event) => {
-      const { downloaded, total } = event.payload;
-      if (total > 0) {
-        const pct = (downloaded / total) * 100;
-        sttDownloadFill.style.width = `${pct}%`;
-        sttModelStatus.textContent = `Downloading speech model… ${Math.round(pct)}%`;
-      }
-    },
-  );
 
   async function beginListening() {
     if (starting) return;
@@ -1211,7 +1128,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     try {
       await invoke("start_audio_capture", {
-        model: sttModelSelect.value,
+        model: STT_MODEL,
         language: codeForLanguageName(sttLanguageCombobox.getValue()) || "en",
       });
     } catch (err) {
@@ -1492,6 +1409,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     item.appendChild(header);
 
+    let heardEl: HTMLElement | null = null;
     if (input.kind === "image") {
       // No thumbnail — removed 2026-09-16 (owner: showing the user's own
       // screen back to them adds no information, they already see it).
@@ -1510,6 +1428,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       p.textContent = `“${input.text}”`;
       item.appendChild(p);
       activeHeardEl = p;
+      heardEl = p;
     } else {
       const pre = document.createElement("pre");
       pre.className = "feed-item-text";
@@ -1527,12 +1446,45 @@ window.addEventListener("DOMContentLoaded", async () => {
     hintFeed.scrollTop = hintFeed.scrollHeight;
 
     void requestAnswer(input, answer);
+    if (heardEl && input.kind === "heard") void shortenHeard(heardEl, input.text);
+  }
+
+  // Long heard questions (a monologue before the question, an implicit ask) are
+  // shown shortened in the panel (owner idea 2026-10-12). Display only: the
+  // answer model gets the full text. A separate Haiku session works in
+  // PARALLEL to the answer, so the first word is not delayed (measured, see
+  // TODO.md). Click on the text toggles short/full. Any failure — the full
+  // text simply stays.
+  const SUMMARY_MIN_WORDS = 20;
+  async function shortenHeard(el: HTMLElement, full: string) {
+    if (full.trim().split(/\s+/).length < SUMMARY_MIN_WORDS) return;
+    const t0 = performance.now();
+    try {
+      const short = (await invoke<string>("summarize_question", { text: full })).trim();
+      if (!short || !el.isConnected) return;
+      console.debug(`[summary] ${Math.round(performance.now() - t0)} ms, ${full.split(/\s+/).length} -> ${short.split(/\s+/).length} words`);
+      const shortText = `“${short}”`;
+      const fullText = `“${full}”`;
+      let showingShort = true;
+      el.textContent = shortText;
+      el.title = "Click: full question / short version";
+      el.style.cursor = "pointer";
+      el.addEventListener("click", () => {
+        showingShort = !showingShort;
+        el.textContent = showingShort ? shortText : fullText;
+      });
+    } catch (err) {
+      console.debug("[summary] failed, full text stays:", err);
+    }
   }
 
   // Only one answer streams at a time — the Rust side emits deltas globally,
   // so this points at whichever element should receive them.
   let activeAnswerEl: HTMLElement | null = null;
   let activeAnswerText = "";
+  // The prompt ends an answer that has no matching fact in the base with `[[GAP]]`
+  // (see llm.rs); hide it, including a half-streamed `[[GA`, and log the gap.
+  const stripGapMarker = (t: string) => t.replace(/\s*\[\[?G?A?P?\]?\]?$/, "");
   // Same one-at-a-time assumption as activeAnswerEl, for the
   // "translated-question" event (only set for input.kind === "heard").
   // Ported from interview-app (owner decision 2026-10-01).
@@ -1676,10 +1628,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       await invoke("generate_answer", {
         request: {
           model: modelSelect.value,
-          style: styleSelect.value,
           interviewContext: interviewContext.value,
           company: companySelect.value,
-          profile: profileSelect.value,
+          profile: saved.profile,
           responseLanguage: currentResponseLanguage(),
           text: input.kind === "image" ? "" : input.text,
           imageDataUri: input.kind === "image" ? input.dataUri : null,
@@ -1716,7 +1667,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     clearFillerTimer();
     if (activeFirstWordMs === null) activeFirstWordMs = Math.round(performance.now() - activeStartedAt);
     activeAnswerText += event.payload;
-    activeAnswerEl.innerHTML = renderAnswerHtml(activeAnswerText);
+    activeAnswerEl.innerHTML = renderAnswerHtml(stripGapMarker(activeAnswerText));
     hintFeed.scrollTop = hintFeed.scrollHeight;
     requestAnimationFrame(() => void invoke("nudge_repaint"));
   });
@@ -1759,11 +1710,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     // A "no data" reply means the knowledge base has a gap: remember the question.
     const head = activeAnswerText.trimStart().slice(0, 60).toLowerCase();
-    if (activeQuestion && (head.startsWith("no data") || head.startsWith("no company card") || head.startsWith("нет данных"))) {
+    const hasGapMarker = /\[\[GAP\]\]/.test(activeAnswerText);
+    if (activeAnswerEl && hasGapMarker) {
+      activeAnswerEl.innerHTML = renderAnswerHtml(stripGapMarker(activeAnswerText));
+    }
+    if (activeQuestion && (hasGapMarker || head.startsWith("no data") || head.startsWith("no company card") || head.startsWith("нет данных"))) {
       void invoke("log_gap", { question: activeQuestion });
     }
     if (activeAnswerText.length > 0) {
-      saveInterviewEntry(activeIsImage ? "[скриншот]" : activeQuestion, activeAnswerText, activeFirstWordMs);
+      saveInterviewEntry(activeIsImage ? "[скриншот]" : activeQuestion, stripGapMarker(activeAnswerText), activeFirstWordMs);
     }
     activeAnswerEl = null;
     requestAnimationFrame(() => void invoke("nudge_repaint"));

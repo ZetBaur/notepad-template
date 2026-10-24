@@ -82,6 +82,11 @@ for (const item of questions) {
   const why = [...new Set(fails.flatMap((r) => r.problems))].join("; ");
   console.log(`${fails.length ? "FAIL" : "ok  "} ${rs.length - fails.length}/${rs.length}  ${item.q}${why ? `  → ${why}` : ""}`);
 }
+// Answer length per kind (owner 2026-10-12: answers must be shorter, simpler, more natural).
+for (const kind of [...new Set(results.map((r) => r.kind))]) {
+  const w = results.filter((r) => r.kind === kind).map((r) => r.answer.split(/\s+/).filter(Boolean).length).sort((a, b) => a - b);
+  console.log(`words ${kind}: median ${w[Math.floor(w.length / 2)]}, max ${w[w.length - 1]} (${w.length} answers)`);
+}
 const avg = Math.round(results.reduce((a, r) => a + (r.first_ms || 0), 0) / results.length);
 console.log(`\n${bad ? "FAILED" : "PASSED"}: ${bad} bad of ${results.length} answers (avg first word ${avg} ms, 4 in parallel, cold sessions: not comparable with live speed)`);
 process.exit(bad ? 1 : 0);

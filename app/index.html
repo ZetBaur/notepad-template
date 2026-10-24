@@ -66,17 +66,6 @@
             language of your hints, including code comments.
           </p>
         </label>
-
-        <label class="field">
-          <span>Answer style</span>
-          <div class="dropdown">
-            <select id="style-select" hidden>
-              <option value="short">Short — 1-2 sentences</option>
-              <option value="bullets">Balanced — adapts to the question</option>
-              <option value="detailed">Detailed — with an example</option>
-            </select>
-          </div>
-        </label>
       </details>
 
       <details class="field-group advanced-settings">
@@ -95,28 +84,6 @@
           </span>
         </label>
 
-        <label class="field">
-          <span>Speech recognition model</span>
-          <div class="dropdown">
-            <select id="stt-model-select" hidden>
-              <option value="tiny">Tiny — fastest, least accurate — 75 MB download</option>
-              <option value="base">Base — fast — 142 MB download</option>
-              <option value="small" selected>Small — included, recommended</option>
-              <option value="medium">Medium — most accurate, slowest — 1.5 GB download</option>
-            </select>
-          </div>
-          <p class="field-note">
-            Not sure? Leave this on Small — it's already installed and works
-            well. Runs entirely on this computer; audio is never uploaded.
-          </p>
-        </label>
-        <p id="stt-model-status" class="field-note"></p>
-        <button id="stt-download-button" class="secondary-button" type="button" hidden>
-          Download this model
-        </button>
-        <div id="stt-download-bar" class="download-bar" hidden>
-          <div id="stt-download-fill" class="download-bar-fill"></div>
-        </div>
       </details>
 
       <!-- macOS permissions, granted up front from the setup screen instead of
@@ -186,16 +153,6 @@
       <details class="field-group">
         <summary>Behavioral interview: knowledge base (Optional)</summary>
         <label class="field">
-          <span>Profile</span>
-          <div class="dropdown">
-            <select id="profile-select" hidden></select>
-          </div>
-          <ul class="field-note">
-            <li>Knowledge profiles live in profiles/&lt;name&gt;/bot/knowledge.md.</li>
-            <li>Switching restarts the answer session (~2 s), so pick it before the interview.</li>
-          </ul>
-        </label>
-        <label class="field">
           <span>Company card</span>
           <div class="dropdown">
             <select id="company-select" hidden>
@@ -222,6 +179,7 @@
               <option value="">Not specified</option>
               <option value="Python">Python</option>
               <option value="JavaScript">JavaScript</option>
+              <option value="TypeScript">TypeScript</option>
               <option value="Java">Java</option>
               <option value="Go">Go</option>
               <option value="C++">C++</option>

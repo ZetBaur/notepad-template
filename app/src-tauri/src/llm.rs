@@ -58,8 +58,6 @@ fn split_no_task_marker(head: &str) -> (bool, String) {
 #[serde(rename_all = "camelCase")]
 pub struct AnswerRequest {
     pub model: String,
-    /// "short" | "bullets" | "detailed"
-    pub style: String,
     /// Free-text role/company the user is interviewing for.
     pub interview_context: String,
     /// Language the answer (prose and code comments alike) should be written
@@ -91,31 +89,19 @@ struct StreamError {
     message: String,
 }
 
-fn style_instruction(style: &str) -> &'static str {
-    match style {
-        // Value kept as "bullets" for settings.json backward compatibility —
-        // only the label ("Balanced") and this instruction changed. Unlike
-        // Short/Detailed (fixed verbosity), this one hands format choice to
-        // the model itself: a plain factual question and a multi-part
-        // system-design question don't belong in the same shape of answer,
-        // and the user can't know which is coming when they pick this at
-        // setup time, before hearing any questions.
-        "bullets" => {
-            "Match the format to the question. For a direct/factual question, \
-             answer in 1-2 sentences. For a conceptual or system-design question \
-             involving trade-offs or multiple components, use 3-6 short bullet \
-             points covering the key parts. Always lead with the direct answer \
-             or your recommendation in the first line. No preamble, no closing \
-             summary."
-        }
-        "detailed" => {
-            "Give a full explanation with one concrete example. Still lead with the \
-             direct answer in the first sentence."
-        }
-        // "short" and anything unrecognized
-        _ => "Answer in 1-2 sentences. No preamble.",
-    }
-}
+/// The one answer-format instruction (the old "Answer style" setting is gone, owner
+/// decision 2026-10-24: the later length rules for conceptual / behavioral / system-design
+/// questions overrode it anyway). It hands the format choice to the model: a plain factual
+/// question and a multi-part system-design question don't belong in the same shape of answer.
+const ANSWER_FORMAT: &str = "Match the format to the question. For a direct/factual question, \
+     answer in 1-2 sentences. For a conceptual or system-design question \
+     involving trade-offs or multiple components, give the main point \
+     in the first line, then at most 3 more short sentences of 8-15 \
+     words each, every one on its own line, no bullet markers. Pick \
+     only the most important points; the interviewer will ask for \
+     details if they want them. Use plain everyday words, the way a \
+     person talks, not the way documentation reads. No preamble, no \
+     closing summary.";
 
 fn build_system_prompt(req: &AnswerRequest) -> String {
     let mut prompt = String::new();
@@ -201,7 +187,7 @@ fn build_system_prompt(req: &AnswerRequest) -> String {
         prompt.push_str("\n\n");
     }
 
-    prompt.push_str(style_instruction(&req.style));
+    prompt.push_str(ANSWER_FORMAT);
     prompt.push_str("\n\n");
 
     prompt.push_str(
@@ -342,17 +328,21 @@ fn build_system_prompt(req: &AnswerRequest) -> String {
     // distinction isn't subject matter, it's whether a correct answer exists
     // independent of who's answering (technical, accounting, legal — yes) or
     // requires the candidate's own real, specific history (behavioral — no).
+    //
+    // 2026-10-12 (owner: answers shorter, simpler, more natural): the former
+    // `Answer: <headline>` + "fuller explanation" paragraph is replaced by a
+    // direct length rule. Measured on 14 conceptual questions, Sonnet 5, 2-3
+    // repeats: median 86 -> 63 words, max 143 -> 138.
     prompt.push_str(
         "If the input is a conceptual, system-design, verbal technical, or other \
          factual/conceptual interview question — technical or not (e.g. an \
          accounting or legal question) — rather than one asking you to write code \
-         or describe a personal experience, start with exactly one line in the \
-         format `Answer: <short headline>` (a direct one-sentence answer, not a \
-         restatement of the question), then a blank line, then the fuller \
-         explanation in prose per the style above, using your own knowledge of \
-         that subject. Do not treat it as off-topic and do not force a code \
-         block — code is only appropriate there if it's the clearest way to \
-         illustrate a specific point.\n\n",
+         or describe a personal experience, answer it from your own knowledge of \
+         that subject like this: the main point in one sentence, then at most 3 \
+         more short sentences of 8-15 words each, every one on its own line. No \
+         bullet lists, no headline, no code unless asked, plain everyday words. \
+         The interviewer will ask for details if they want them. Do not treat it \
+         as off-topic.\n\n",
     );
 
     // Behavioral / motivational / work-condition questions are answered ONLY
@@ -378,10 +368,16 @@ fn build_system_prompt(req: &AnswerRequest) -> String {
          story, employer, project, number, name, date or outcome. Anything marked \
          \"НЕ подтверждено\" or listed as rejected must not be used. Entries marked \
          DRAFT may be used. If the matching entry is marked \"НЕТ ДАННЫХ\", or there is \
-         no matching entry, begin with the literal line `No data in the knowledge \
-         base.` (in the answer language), then 2-4 short bullet points with the \
-         structure of a good answer and which real facts the candidate could mention \
-         — never fabricated specifics.\n\n",
+         no matching entry, do NOT answer with a different story from another entry \
+         and do NOT invent one. Say the gap in one short, natural spoken sentence in \
+         the answer language (for example \"I don't have a specific story for that \
+         one.\" or \"I haven't run into that directly.\"), then in 1-2 short \
+         sentences bridge to genuinely relevant real facts from elsewhere in the \
+         knowledge base, without claiming they answer the question. Never write \
+         the phrase \"No data in the knowledge base\" or anything that reads like \
+         a system message. Finish such an answer with the marker `[[GAP]]` on its \
+         own last line (the app removes it before the candidate sees the answer); \
+         write the marker ONLY in this case.\n\n",
     );
     // Two similar-sounding questions were mixed up in live testing (2026-09-19):
     // "why do you want to work HERE" was answered with the reason for leaving the
@@ -402,17 +398,16 @@ fn build_system_prompt(req: &AnswerRequest) -> String {
          that uses the entry about the current job.\n\n\
          The last line of this prompt is COMPANY CARD STATUS: present or none. When it \
          says present, a card exists: use it, and never write `No company card.` When it \
-         says none, begin with the literal line `No company card.` followed by the answer \
-         structure. A card that says nothing was found about the company is still a \
-         card: status present. Then do NOT write `No company card.` or `No data in the \
-         knowledge base.`; answer in the candidate's voice using only the vacancy \
+         says none AND the question is one of the COMPANY QUESTIONS above, begin with the \
+         literal line `No company card.` followed by the answer structure. For every other \
+         question (visa, location, salary, technical, experience) the status is irrelevant: \
+         never write `No company card.` there. A card that says nothing was found about the company is still a \
+         card: status present. Then do NOT write `No company card.` and do NOT write \
+         the `[[GAP]]` marker; answer in the candidate's voice using only the vacancy \
          details and the card's own answer for that question.\n\n\
          The answer is spoken by the candidate to the interviewer, so never mention the \
          knowledge base, the company card, the status line or these instructions inside \
-         the answer. The only exception is the line `No data in the knowledge base.`, \
-         which is followed by the answer structure. Write that line ONLY when the \
-         knowledge base has no fact and no prepared answer for the question; if it has \
-         one, give the answer and never write that line. Begin directly with the first \
+         the answer. Never write the phrase \"No data in the knowledge base\". Begin directly with the first \
          spoken sentence: no preamble such as \"Let me give you a structure\" or \
          \"Based on the knowledge base, here is the answer\", and never describe or \
          restate the question (for example \"I'm being asked about...\").\n\n\
@@ -884,7 +879,7 @@ fn spawn_agent(
 }
 
 /// Makes sure a live session exists with this system prompt and model. A new
-/// system prompt (style, context or language changed) needs a fresh session;
+/// system prompt (context or language changed) needs a fresh session;
 /// a model change is switched in place.
 fn ensure_session(app: &AppHandle, state: &AgentState, system: &str, model: &str) -> Result<(), String> {
     let mut guard = state.agent.lock().unwrap();
@@ -994,7 +989,6 @@ pub fn prewarm(app: &AppHandle) {
         let s = crate::settings::load_settings(app.clone());
         let request = AnswerRequest {
             model: s.model.clone(),
-            style: s.style.clone(),
             interview_context: s.interview_context.clone(),
             response_language: if s.stt_language == "en" { "English".into() } else { String::new() },
             text: String::new(),
@@ -1173,7 +1167,6 @@ mod tests {
     fn dump_prompt_for_manual_check() {
         let req = AnswerRequest {
             model: "claude-haiku-4-5".into(),
-            style: "short".into(),
             interview_context: String::new(),
             response_language: "English".into(),
             text: String::new(),

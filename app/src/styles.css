@@ -620,21 +620,6 @@ button:hover {
   white-space: pre-line;
 }
 
-.download-bar {
-  height: 6px;
-  border-radius: 3px;
-  background: #e5e5e5;
-  overflow: hidden;
-  margin-top: 6px;
-}
-
-.download-bar-fill {
-  height: 100%;
-  width: 0%;
-  background: #396cd8;
-  transition: width 0.2s linear;
-}
-
 .feed-item-heard {
   font-size: 0.85rem;
   font-style: italic;

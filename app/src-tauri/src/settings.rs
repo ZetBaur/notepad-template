@@ -14,7 +14,6 @@ use tauri::{AppHandle, Manager};
 pub struct Settings {
     pub provider: String,
     pub model: String,
-    pub style: String,
     pub interview_context: String,
     /// Company card name (profiles/companies/<name>.md); empty = none.
     pub company: String,
@@ -22,7 +21,6 @@ pub struct Settings {
     pub profile: String,
     pub stt_language: String,
     pub capture_exclusion: bool,
-    pub stt_model: String,
     /// UI-wide text scale (1.0 = 100%, the CSS root font-size baseline),
     /// adjusted via Cmd/Ctrl +/-/0 rather than a settings-screen control —
     /// see docs/PROMPT-FONT-SIZE-OPTION.md for why. Persisted so a user who
@@ -50,13 +48,11 @@ impl Default for Settings {
         Self {
             provider: "openai".to_string(),
             model: String::new(),
-            style: "short".to_string(),
             interview_context: String::new(),
             company: String::new(),
             profile: String::new(),
             stt_language: "en".to_string(),
             capture_exclusion: true,
-            stt_model: "small".to_string(),
             zoom_level: 1.0,
             audio_permission_granted: None,
             has_used_app: false,

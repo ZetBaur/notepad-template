@@ -14,6 +14,7 @@ mod permissions;
 mod screenshot;
 mod settings;
 mod stt;
+mod summary;
 #[cfg(target_os = "windows")]
 mod wasapi;
 
@@ -844,6 +845,7 @@ pub fn run() {
         .manage(audio::AudioState::default())
         .manage(stt::SttState::default())
         .manage(llm::AgentState::default())
+        .manage(summary::SummaryState::default())
         // Must be the first plugin registered — it needs to intercept a
         // second launch before anything else in the chain runs. A relaunch
         // (double-clicking the icon/shortcut again while already running)
@@ -934,6 +936,7 @@ pub fn run() {
             screenshot::capture_screen_region,
             screenshot::capture_full_screen,
             llm::generate_answer,
+            summary::summarize_question,
             knowledge::list_companies,
             knowledge::list_profiles,
             knowledge::reload_knowledge,
@@ -950,6 +953,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             llm::prewarm(&handle);
+            summary::prewarm(&handle);
             // Show/Hide, Screenshot and Start Over are fixed, non-
             // configurable global hotkeys as of 2026-09-15
             // (docs/PROPOSAL-TOOLBAR-HOTKEYS-SETTINGS.md) — registered once

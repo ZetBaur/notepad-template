@@ -79,14 +79,16 @@
   "kind": "behav",
   "q": "Tell me about a conflict you had with a coworker.",
   "must_not": [
-   "^no data"
+   "^no data",
+   "\\[\\[GAP\\]\\]"
   ]
  },
  {
   "kind": "behav",
   "q": "What are your salary expectations?",
   "must_not": [
-   "^no data"
+   "^no data",
+   "\\[\\[GAP\\]\\]"
   ]
  },
  {
@@ -133,14 +135,16 @@
   "kind": "behav",
   "q": "Do you take freelance work alongside your full-time job?",
   "must_not": [
-   "^no data"
+   "^no data",
+   "\\[\\[GAP\\]\\]"
   ]
  },
  {
   "kind": "behav",
   "q": "How much of your current work is mobile compared to web or backend?",
   "must_not": [
-   "^no data"
+   "^no data",
+   "\\[\\[GAP\\]\\]"
   ]
  }
 ]

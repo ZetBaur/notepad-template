@@ -475,6 +475,23 @@ fn build_system_prompt(req: &AnswerRequest) -> String {
          image or by what else surrounds it.\n\n",
     );
 
+    // Screenshot + recent speech (owner request 2026-11-02): the frontend adds
+    // what the interviewer said just before the screenshot, so the request
+    // asked in words is not guessed from the picture alone.
+    prompt.push_str(
+        "If the input contains a line starting with \"[Interviewer said just before \
+         this screenshot:\", that is the interviewer's latest spoken request and the \
+         attached image is its context. Answer THAT request, using the image only as \
+         the material it refers to (code, diagram, error, document, task). The spoken \
+         request may not be about coding at all (for example a question about the \
+         architecture, a behavioral question, or a request to explain something on \
+         screen); never default to solving a coding problem just because one is \
+         visible. The speech is transcribed and may contain earlier unrelated lines: \
+         use the part that is the request. If the speech is clearly unrelated to the \
+         image, answer the speech. If it is only small talk, fall back to the image \
+         alone.\n\n",
+    );
+
     // Machine-readable tag on that one refusal path, so the app can tell a
     // refusal from an answer without matching on its wording — see
     // NO_TASK_MARKER. Stated as its own paragraph, after the guard above has

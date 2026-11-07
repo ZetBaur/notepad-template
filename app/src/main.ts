@@ -488,6 +488,19 @@ function renderInlineMarkdown(segment: string): string {
 
 const BULLET_LINE_RE = /^[-*•]\s+/;
 
+/// Plain (non-code) answer as bullets: every non-empty line becomes one <li>
+/// (owner, mock 2026-10-25). A single line stays plain text so a one-phrase
+/// reply (or the first streamed line) isn't wrapped in a lone bullet.
+function renderAnswerBullets(text: string): string | null {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim().replace(BULLET_LINE_RE, ""))
+    .filter((l) => l.length > 0);
+  if (lines.length < 2) return null;
+  const items = lines.map((l) => `<li>${renderInlineMarkdown(l)}</li>`).join("");
+  return `<ul class="answer-bullets">${items}</ul>`;
+}
+
 /// Renders a leading "My Thoughts" bullet segment (see
 /// docs/PROPOSAL-ANSWER-FORMAT-MY-THOUGHTS.md) as a labeled list instead of
 /// plain text — only called on the stretch of text before the first code
@@ -561,7 +574,7 @@ function renderAnswerHtml(text: string): string {
       // that happens to mention "Time:") just falls through to plain text.
       const rendered =
         i === 0 ? renderAnswerHeadline(trailing) : renderComplexity(trailing);
-      html += rendered ?? renderInlineMarkdown(trailing);
+      html += rendered ?? (i === 0 ? renderAnswerBullets(trailing) : null) ?? renderInlineMarkdown(trailing);
       break;
     }
     const preFence = text.slice(i, fenceIdx);
@@ -1228,7 +1241,74 @@ window.addEventListener("DOMContentLoaded", async () => {
   attachDragRegion(compactHeader);
   attachDragRegion(compactToolbarEl);
 
+  // Bottom-right resize handle. The window has no native frame, so the edges
+  // are hard to hit. Resizing is done by hand (setSize), same idea as
+  // attachDragRegion; floor matches COMPACT_MIN_SIZE in lib.rs.
+  const resizeGrip = document.querySelector<HTMLElement>("#resize-grip")!;
+  resizeGrip.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const win = getCurrentWindow();
+    const startX = e.screenX;
+    const startY = e.screenY;
+    void Promise.all([win.innerSize(), win.scaleFactor()]).then(([size, scale]) => {
+      const startW = size.width / scale;
+      const startH = size.height / scale;
+      const onMove = (m: MouseEvent) => {
+        const w = Math.max(280, startW + (m.screenX - startX));
+        const h = Math.max(200, startH + (m.screenY - startY));
+        void win.setSize(new LogicalSize(w, h));
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  });
+
+  // Normal <-> tall window toggle (owner, mock 2026-10-25): tall = full
+  // screen height of the current monitor, narrow column, same left edge.
+  // Remembers the normal size/position to come back to.
+  const TALL_WIDTH = 380;
+  const TALL_TOP_GAP = 30; // menu bar
+  const TALL_BOTTOM_GAP = 10;
+  let normalWindow: { w: number; h: number; x: number; y: number } | null = null;
+  const sizeToggleButton = document.querySelector<HTMLButtonElement>("#size-toggle-button")!;
+  sizeToggleButton.addEventListener("click", async () => {
+    const win = getCurrentWindow();
+    try {
+      if (normalWindow) {
+        const prev = normalWindow;
+        normalWindow = null;
+        await win.setSize(new LogicalSize(prev.w, prev.h));
+        await win.setPosition(new PhysicalPosition(prev.x, prev.y));
+      } else {
+        const [size, scale, pos, monitor] = await Promise.all([
+          win.innerSize(),
+          win.scaleFactor(),
+          win.outerPosition(),
+          currentMonitor(),
+        ]);
+        if (!monitor) return;
+        normalWindow = { w: size.width / scale, h: size.height / scale, x: pos.x, y: pos.y };
+        const monitorH = monitor.size.height / scale;
+        const maxX = monitor.position.x + monitor.size.width - TALL_WIDTH * scale;
+        const x = Math.min(pos.x, Math.round(maxX));
+        await win.setSize(new LogicalSize(TALL_WIDTH, monitorH - TALL_TOP_GAP - TALL_BOTTOM_GAP));
+        await win.setPosition(
+          new PhysicalPosition(x, monitor.position.y + Math.round(TALL_TOP_GAP * scale)),
+        );
+      }
+      void invoke("reassert_cross_space");
+    } catch (err) {
+      console.error("failed to toggle window size", err);
+    }
+  });
+
   settingsButton.addEventListener("click", () => {
+    normalWindow = null;
     void returnToSetup();
   });
 
@@ -1613,6 +1693,21 @@ window.addEventListener("DOMContentLoaded", async () => {
     }, FILLER_DELAY_MS);
   }
 
+  // Last transcribed lines, so a screenshot is answered in the context of what
+  // the interviewer just said (owner request 2026-11-02): "what is wrong with
+  // this architecture?" + a diagram on screen. Only fresh lines are used.
+  const recentHeard: { text: string; at: number }[] = [];
+  const SCREENSHOT_SPEECH_WINDOW_MS = 60_000;
+  function speechBeforeScreenshot(): string {
+    const cutoff = Date.now() - SCREENSHOT_SPEECH_WINDOW_MS;
+    return recentHeard
+      .filter((h) => h.at >= cutoff)
+      .slice(-3)
+      .map((h) => h.text)
+      .join(" ")
+      .trim();
+  }
+
   async function requestAnswer(input: ProblemInput, target: HTMLElement) {
     activeAnswerEl = target;
     activeAnswerText = "";
@@ -1632,7 +1727,12 @@ window.addEventListener("DOMContentLoaded", async () => {
           company: companySelect.value,
           profile: saved.profile,
           responseLanguage: currentResponseLanguage(),
-          text: input.kind === "image" ? "" : input.text,
+          text:
+            input.kind === "image"
+              ? speechBeforeScreenshot()
+                ? `[Interviewer said just before this screenshot: "${speechBeforeScreenshot()}"]`
+                : ""
+              : input.text,
           imageDataUri: input.kind === "image" ? input.dataUri : null,
           // Off by owner decision 2026-10-04: the TRANSLATED_Q line the model writes
           // before the answer delayed the first word by 0.7-1.4 s on long questions
@@ -1872,6 +1972,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   // ask for an answer on anything by clicking it.
   void listen<{ text: string; isQuestion: boolean }>("transcript", (event) => {
     const { text, isQuestion } = event.payload;
+    recentHeard.push({ text, at: Date.now() });
+    if (recentHeard.length > 10) recentHeard.shift();
     if (isQuestion) {
       addProblemToFeed({ kind: "heard", text });
       saveTranscriptLine(text);

@@ -805,6 +805,8 @@ button:hover {
    layout, not a restructure. */
 .compact-toolbar {
   display: flex;
+  /* Narrow window: buttons drop to a second row instead of being cut off. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
@@ -858,9 +860,12 @@ button:hover {
   color: #17191c;
 }
 
-/* Gear stays the plain .icon-button look, just pushed to the row's end. */
-.compact-toolbar .icon-button {
+/* Size toggle and gear stay plain .icon-button, pushed to the row's end
+   (the toggle takes the auto margin, the gear sits right after it). */
+.compact-toolbar #size-toggle-button {
   margin-left: auto;
+}
+.compact-toolbar .icon-button {
   /* Explicit, not just inherited from #compact-view's `color` — found live
      2026-09-16 the gear was barely visible (owner screenshot). Bumped size
      too: the "⚙" glyph renders visibly smaller than surrounding text at the
@@ -894,3 +899,34 @@ button:hover {
 
    The code block in the hint panel stays dark in both cases (see `pre`/`code`
    above); that's syntax highlighting, not theming. */
+
+/* Answer lines as bullets (owner, mock 2026-10-25): each sentence is its own
+   point so the eye catches it on a call. See renderAnswerBullets in main.ts. */
+.answer-bullets {
+  margin: 0;
+  padding-left: 1.2em;
+  white-space: normal;
+}
+.answer-bullets li {
+  margin: 0 0 12px;
+}
+.answer-bullets li:last-child {
+  margin-bottom: 0;
+}
+
+/* Bottom-right resize handle (owner, mock 2026-10-25). */
+.resize-grip {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  z-index: 10;
+  background:
+    linear-gradient(135deg, transparent 0 55%, #8a9096 55% 62%, transparent 62% 72%, #8a9096 72% 79%, transparent 79% 89%, #8a9096 89% 96%, transparent 96%);
+  opacity: 0.7;
+}
+.resize-grip:hover {
+  opacity: 1;
+}

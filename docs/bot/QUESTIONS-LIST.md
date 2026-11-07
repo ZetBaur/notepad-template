@@ -6,6 +6,9 @@
 
 ## О себе и карьера
 - Tell me about yourself
+- Tell me about your last two companies: responsibilities and main challenges (звонок Inkitt 2026-10-28)
+- Where are you based? Are you in [your city]? (small talk)
+- Did you develop this project alone? (про свой проект)
 - Walk me through your resume
 - Why are you looking for a new job? / Why are you leaving your current job?
 - What are you looking for in your next role?
@@ -29,6 +32,7 @@
 
 ## Условия, формат, документы
 - Salary expectations / hourly or yearly rate
+- Can you work US (San Francisco) hours / overlap with the US team? (звонок Inkitt 2026-10-28)
 - Can you be flexible on compensation?
 - When can you start? What is your exact contractual notice period?
 - Are you looking for B2B contract work or a permanent employment contract (Festanstellung)?
@@ -89,6 +93,7 @@
 
 ## Лидерство, инициатива, бизнес
 - Have you led a team?
+- What does it mean to be a lead in the team?
 - A time you led a project / took ownership
 - A time you identified a gap outside your responsibilities and took full ownership to solve it
 - A time you took initiative
@@ -96,6 +101,7 @@
 - A time you influenced a decision without authority
 - A time you made an unpopular decision / persuaded the team
 - Biggest technical achievement / a project you are technically proud of
+- Biggest technical challenges, or challenges you faced as a lead (звонок Inkitt 2026-10-28)
 - How do you evaluate the business impact of your technical decisions? An example where a technical optimization improved a business metric?
 - How do you convince non-technical stakeholders (Product, Executives) to allocate time for technical debt or refactoring?
 - How do you collaborate with Product, Design, and QA to turn business goals into technical requirements?
@@ -115,42 +121,66 @@
 - Explaining technical things to non-technical people
 - Favorite programming language / tools
 - Do you use AI tools at work?
-- How would you describe your experience with Node.js?
-- What is your experience with React Native?
-- Experience with Vue / MongoDB / AWS / Angular
-- How much of your work is mobile vs web vs backend?
-- How involved were you with payment features?
+- How would you describe your experience with Python?
+- What is your experience with PyTorch / TensorFlow / scikit-learn?
+- Experience with LLM APIs, vector databases, cloud (AWS / GCP) and MLOps tools?
+- How much of your work is research and modeling vs data engineering vs production deployment?
+- Walk me through your most important ML/AI project: goal, your role, baseline, metrics, result, mistakes.
+- Which ML/AI projects have you shipped to production, and what was your part?
 - Side projects / your desktop app / are those articles yours?
 
-## Технические вопросы: Node.js и JavaScript
-- What is the difference between let and const in JavaScript?
-- Explain how closures work in JavaScript.
-- What is the difference between Promise.all and Promise.allSettled?
-- How does the event loop work in Node.js?
-- How do microtasks (Promises, `process.nextTick`) differ from macrotasks (`setTimeout`, `setImmediate`) in execution order?
-- How do you find and fix memory leaks or heap out-of-memory errors in production Node.js?
-- When does Node.js use the `libuv` thread pool, and when would you adjust `UV_THREADPOOL_SIZE`?
-- How do you handle CPU-intensive tasks without blocking the Event Loop (Worker Threads vs Streams vs Clustering)?
-- What is the difference between useMemo and useCallback in React?
+## Технические вопросы: Python и данные
+- What is the difference between a list, a tuple, a set and a dict in Python? When do you use each?
+- How do generators and iterators work, and when do you use them for large data?
+- What is the GIL, and how does it affect ML and data workloads?
+- How do you work with a dataset that does not fit in memory?
+- How do you find and fix a performance problem in Python code (profiling, vectorization, multiprocessing vs asyncio)?
+- How do you clean a messy dataset with pandas (missing values, duplicates, outliers)?
+- How would you compute weekly active users from a table of events (SQL, window functions, deduplication)?
+- Implement top-K most frequent items in a stream with limited memory.
+- How do you write tests for data and ML code?
 
-## Технические вопросы: базы данных и кэш
-- How do you find and fix a slow PostgreSQL query?
-- What are database isolation levels, and how do you prevent race conditions or phantom reads under high concurrency?
-- How do you handle cache invalidation, cache stampede and cache penetration with Redis?
-- When would you choose sharding over read-replicas, and how do you choose a shard key for PostgreSQL?
+## Технические вопросы: основы ML и оценка моделей
+- What is the bias-variance trade-off? How do you reduce overfitting?
+- How do you choose a metric: precision, recall, F1, ROC-AUC vs PR-AUC?
+- How do you handle imbalanced data?
+- What is data leakage, and how do you prevent it?
+- How do you split data: train / validation / test, cross-validation, time-based split?
+- What is regularization (L1, L2), and when do you use it?
+- How does gradient descent work, and what can go wrong?
+- Why can a model have a high ROC-AUC but work badly at the chosen threshold?
+- Gradient boosting vs neural networks for tabular data: how do you choose?
+- What are embeddings, and where do you use them?
+- How do transformers and attention work, at a high level?
+- How do you tune hyperparameters?
+- A model works well offline but badly in production. What do you check?
 
-## Технические вопросы: API, очереди, микросервисы
-- What is the difference between REST and GraphQL? How do you decide between them on a project?
-- How would you design a rate limiter for an API?
-- How do you handle eventual consistency and distributed transactions across microservices (Saga vs Two-Phase Commit)?
-- How do you ensure "at-least-once" or "exactly-once" processing in Kafka or RabbitMQ, and implement idempotency in consumers?
-- How do you implement backpressure when consuming streams or large message volumes from queues?
-- How do you handle API versioning and database schema migrations without downtime or breaking clients?
-- How do you secure microservices internally (mTLS, API Gateways) and externally (OAuth2, JWT revocation)?
+## Технические вопросы: LLM, RAG и агенты
+- Do you use Claude Code / Codex / other AI coding agents (OpenClaw, Hermes) in development? (звонок Inkitt 2026-10-28; честно: что не пробовал, так и говорить)
+- How does a RAG system work (chunking, embeddings, retrieval, reranking)?
+- How do you evaluate a RAG system: retrieval quality vs answer quality?
+- How do you reduce hallucinations?
+- Prompting vs RAG vs fine-tuning: how do you choose?
+- How do you build an agent with tool calling, and how do you limit steps and handle errors?
+- How do you control latency and cost of an LLM application (caching, model choice)?
+- What is prompt injection, and how do you defend against it?
+- How do you evaluate LLM outputs when there is no ground truth?
 
-## System Design
-- How would you design a URL shortener, a Notification System, or a Real-Time Ride-Hailing Backend to handle 50,000+ RPS?
-- How do you set up distributed tracing, structured logging, and metrics (Prometheus, Grafana, Datadog) with meaningful alerting (SLI/SLO/SLA)?
+## Технические вопросы: MLOps и production
+- How do you deploy a model: batch vs real-time, canary, shadow, rollback?
+- How do you detect data drift and concept drift?
+- How do you version data, code and models, and make training reproducible?
+- What is training-serving skew?
+- What does CI/CD for an ML pipeline look like?
+- After a model update, business metrics dropped. What do you check?
+- How do you set up monitoring and alerting for an ML service (latency, quality, drift)?
+
+## System Design для ML
+- Design a recommendation system for an online store.
+- Design a fraud detection system.
+- Design a RAG assistant over internal documentation.
+- Design a search ranking system.
+- How do you scale model training and inference?
 
 ## Необычные и каверзные (vibe-вопросы, профайлинг)
 - On a scale of 1 to 10, how lucky are you?

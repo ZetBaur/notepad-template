@@ -23,7 +23,7 @@
   Владелец один раз читает и правит слова под себя.
 - Факты хранятся по-русски как их дал владелец + готовый ответ EN/RU рядом.
   Файлы markdown в `profiles/` (в `.gitignore`). Каталог вопросов и статус
-  сбора — `profiles/<профиль>/bot/reference/QUESTIONS.md`.
+  сбора — `profiles/ml-engineer/bot/reference/QUESTIONS.md`.
 - Вкладок «поведенческое / техническое» **нет** (убраны 2026-09-19 по замеру: Auto
   отвечает верно на 8/8 технических, метка Behavioral ломала технические ответы, см.
   `profiles/research/mode-tabs-measurement-2026-09-19.md`). Тип вопроса модель решает
@@ -47,7 +47,7 @@
   его Claude, и база пополняется.
 
 **Структура с 2026-10-04:** `app/src-tauri/src/knowledge.rs` читает ровно один файл —
-`profiles/<профиль>/bot/knowledge.md` (профиль = папка `profiles/<профиль>/`, в ней `bot/knowledge.md`; выбор — переключатель «Profile» в настройках,
+`profiles/<профиль>/bot/knowledge.md` (профиль = папка `profiles/<профиль>/`, в ней `bot/knowledge.md`; селектора в настройках нет (с 2026-10-24): профиль берётся из `settings.json` (`profile`),
 пусто = первый по алфавиту). Всё остальное в `<профиль>/bot/` (`reference/`: старые 01-profile, 02-answers с RU, CLAIMS,
 QUESTIONS, ANKETA, стратегия общения) и общие `bot/FORBIDDEN.md`, `bot/GAPS.md` в промпт не попадают — список
 `EXCLUDED` больше не нужен. Файл знаний = Часть 1 (факты) + Часть 2 (готовые EN-ответы, строки `> `);

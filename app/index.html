@@ -222,6 +222,9 @@
           <span>Start Over</span>
           <kbd id="start-over-hotkey-badge" class="toolbar-hotkey"></kbd>
         </button>
+        <button id="size-toggle-button" class="icon-button" type="button" title="Tall / normal window size" aria-label="Toggle window size">
+          ⤢
+        </button>
         <button id="settings-button" class="icon-button" type="button" title="Back to settings">
           ⚙
         </button>
@@ -255,6 +258,10 @@
           </p>
         </div>
       </div>
+
+      <!-- Bottom-right drag handle: the window has no native frame, so edges are
+           hard to grab. Wired in main.ts (setSize by hand, same as drag). -->
+      <div id="resize-grip" class="resize-grip" title="Drag to resize" aria-hidden="true"></div>
     </main>
 
     <!-- Shown instead of the compact panel when system-audio capture can't start. -->
